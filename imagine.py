@@ -4,50 +4,90 @@ import pandas as pd
 import numpy as np
 import math
 ########################           FUNCTIONS           #########################
-def make_kernel(radius, sigma):
-    ''' used from clemisch on stack overflow 
-    their original code can be viewed here:
-    https://stackoverflow.com/a/43346070'''
+def make_kernel(radius: int, sigma: float):
+    ''' 
+    used from clemisch on stack overflow. Their original code can be viewed
+    here: https://stackoverflow.com/a/43346070
+    
+    creates a gaussian kernel of a given radius and sigma
+    INPUTS:
+        radius (int): the desired radius of the kernel
+        sigma (float): the sigma value used for calculating the kernel
+    OUTPUTS:
+        kernel (np.array): a gaussian kernel
+    '''
     ax = np.linspace(-radius, radius, 2 * radius + 1)
     gauss = np.exp(-0.5 * np.square(ax) / np.square(sigma))
     kernel = np.outer(gauss, gauss)
-    return kernel / np.sum(kernel)
+    kernel = kernel / np.sum(kernel)
+    return kernel
 
 def add_padding(img: np.array, pad: int):
+    '''
+    enlarges the image by creating a border around it and matching the pixels to
+    the nearest pixel of the image
+    INPUTS:
+        img (np.array): the black and white single channel image data
+        pad (ing): amount of pixels to add to each side of the image
+    OUTPUTS:
+        pad_img (np.array): padded image'''
     pad_img = np.zeros((img.shape[0] + 2 * pad, img.shape[1] + 2 * pad))
     p_shape = pad_img.shape
-    # filling corners
-    pad_img[0: pad, 0: pad] = img[0][0]
-    pad_img[p_shape[0] - pad: p_shape[0], 0: pad] = img[img.shape[0] - 1][0]
-    pad_img[0: pad, p_shape[1] - pad: p_shape[1]] = img[0][img.shape[1] - 1]
-    pad_img[p_shape[0] - pad: p_shape[0], p_shape[1] - pad: p_shape[1]] = img[img.shape[0] - 1][img.shape[1] - 1]
-    # filling sides
-    pad_img[pad:p_shape[0]-pad, 0:pad] = np.repeat(img[:, 0, np.newaxis], pad, axis=1)
-    pad_img[0:pad, pad:p_shape[1]-pad] = np.repeat(img[np.newaxis, 0, :], pad, axis=0)
-    pad_img[pad:p_shape[0]-pad, p_shape[1]-pad:p_shape[1]] = np.repeat(img[:, img.shape[1]-1, np.newaxis], pad, axis=1)
-    pad_img[p_shape[0]-pad:p_shape[0], pad:p_shape[1]-pad] = np.repeat(img[np.newaxis, img.shape[0]-1, :], pad, axis=0)
 
-    
+    # filling corners
+    pad_img[0: pad, 0: pad] = img[0][0] # top left
+    pad_img[p_shape[0] - pad: p_shape[0], 0: pad] = \
+        img[img.shape[0] - 1][0] # bottom left
+    pad_img[0: pad, p_shape[1] - pad: p_shape[1]] = \
+        img[0][img.shape[1] - 1] # top right
+    pad_img[p_shape[0] - pad: p_shape[0], p_shape[1] - pad: p_shape[1]] = \
+        img[img.shape[0] - 1][img.shape[1] - 1] # bottom right
+
+    # filling sides
+    pad_img[pad:p_shape[0]-pad, 0:pad] = \
+        np.repeat(img[:, 0, np.newaxis], pad, axis=1) # left
+    pad_img[0:pad, pad:p_shape[1]-pad] = \
+        np.repeat(img[np.newaxis, 0, :], pad, axis=0) # top
+    pad_img[pad:p_shape[0]-pad, p_shape[1]-pad:p_shape[1]] = \
+        np.repeat(img[:, img.shape[1]-1, np.newaxis], pad, axis=1) # bottom
+    pad_img[p_shape[0]-pad:p_shape[0], pad:p_shape[1]-pad] = \
+        np.repeat(img[np.newaxis, img.shape[0]-1, :], pad, axis=0) # right
+    # placing original image in center
     pad_img[pad: p_shape[0] - pad, pad: p_shape[1] - pad] = img
     return pad_img
 
 def gaussian_blur(in_img: np.array):
-    rad = 2
+    '''
+    blurs the image by convolving it with a gaussian kernel
+    INPUTS:
+        in_img (np.array): black and white single channel image data
+    OUTPUTS:
+        out_img (np.array): blurred image'''
+    rad , sigma = 2, 1 # radius and sigma of desired gaussian kernel
     out_img = np.zeros(in_img.shape)
     pad_img = add_padding(in_img, rad)
-    kernel = make_kernel(rad, sigma=1)
+    kernel = make_kernel(rad, sigma)
+    # iterate through image
     for h in range(in_img.shape[0]):
         for w in range(in_img.shape[1]):
-            # move through kernel
+            # iterate through kernel
             kernel_sum = 0
             for i in range(-rad, rad + 1):
                 for j in range(-rad, rad + 1):
-                    kernel_sum += pad_img[h + i + rad, w + j + rad] * kernel[i + rad, j + rad]
+                    kernel_sum += pad_img[h + i + rad, w + j + rad] * \
+                        kernel[i + rad, j + rad]
             out_img[h, w] = kernel_sum
-
     return out_img
 
 def sobel_filter(in_img: np.array):
+    '''
+    finds the intensity gradient of the image using a sobel filter
+    INPUTS:
+        in_img (np.array): black and white single channel image data
+    OUTPUTS:
+        g (np.array): array containing magnitudes of gradient
+        theta (np.array): array containing rounded angles of gradient
+    '''
     x_img, y_img = np.zeros(in_img.shape), np.zeros(in_img.shape)
     pad_img = add_padding(in_img, 1)
     g_x = np.asarray([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
