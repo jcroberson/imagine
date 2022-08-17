@@ -8,7 +8,9 @@ def avg(num_list):
     return sum(num_list) / len(num_list)
 
 def make_kernel(radius, sigma):
-    ''' from clemisch on stack overflow '''
+    ''' used from clemisch on stack overflow 
+    their original code can be viewed here:
+    https://stackoverflow.com/a/43346070'''
     ax = np.linspace(-radius, radius, 2 * radius + 1)
     gauss = np.exp(-0.5 * np.square(ax) / np.square(sigma))
     kernel = np.outer(gauss, gauss)
