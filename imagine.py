@@ -4,9 +4,6 @@ import pandas as pd
 import numpy as np
 import math
 ########################           FUNCTIONS           #########################
-def avg(num_list):
-    return sum(num_list) / len(num_list)
-
 def make_kernel(radius, sigma):
     ''' used from clemisch on stack overflow 
     their original code can be viewed here:
@@ -176,30 +173,41 @@ def make_image(in_img: np.array):
     return out_img
 
 ######################           OPENING IMAGE           #######################
-IMAGE_ADDRESS = r'enter_address_here'
+IMAGE_ADDRESS = r'example.jpg'
 img = np.array(Image.open(IMAGE_ADDRESS))
 if img.shape[2] == 4:
     img = np.delete(img, 3, 2)
 
 #####################           BLACK AND WHITE           ######################
+print('# turning to greyscale...')
 bw_img = np.uint8(img.mean(axis=2))
 
 ######################           EDGE DETECTION           ######################
+print('# detecting edges...')
 # Gaussian blur
+print('*   gaussian blurring')
 gb_img = gaussian_blur(bw_img)
 # intensity gradient
+print('*   finding intensity gradient')
 sf_img, th_img = sobel_filter(gb_img)
 # magnitude thresholding
+print('*   magnitude thresholding')
 mt_img = magnitude_thresholding(sf_img, th_img)
 # double thresholding
+print('*   double thresholding')
 dt_img = double_threshold(mt_img, 0.1, 0.2)
 # hysteresis
+print('*   hysteresis')
 hy_img = 255 - hysteresis(dt_img)
 # line thickening
+print('*   thickening lines')
 tl_img = line_thickener(hy_img, 1)
 
 ########################           DITHERING           #########################
-gc_img = gamma_correct(bw_img, 0.7)
+print('# dithering')
+print('*   adjusting brightness...')
+gc_img = gamma_correct(bw_img, 1.0)
+print('*   blue noise dithering...')
 di_img = dither(gc_img, coeff = 0.4)
 
 ########################           COMBINING           #########################
@@ -210,3 +218,4 @@ colored = np.uint8(color_filter(combined_img, [245, 242, 225], [25, 26, 36]))
 
 final = Image.fromarray(colored)
 final = final.save('final_img.png')
+print('# finished')
