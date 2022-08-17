@@ -3,6 +3,21 @@ from PIL import Image
 import pandas as pd
 import numpy as np
 import math
+
+#######################           USER INPUTS           ########################
+IMAGE_ADDRESS = r'example.jpg'
+
+BLUR = True # (bool) whether or not to gaussian blur before edge detection
+THICKEN_LINES = True # (bool) whether or not to thicken lines
+
+LOW_THRESH = 0.1 # (0-1) low threshold for double thresholding
+HIGH_THRESH = 0.2 # (0-1) high threshold for double thresholding
+THICKEN_FACTOR = 1 # (int) radius in pixels of thickened line
+GAMMA_FACTOR = 0.2 # (float) gamma correction (<1 darkens, >1 lightens)
+DITHER_COEFF = 0.6 # (0-1) controls the frequency of sampling of noise image
+LIGHT_COLOR = [245, 242, 225] # (rgb) light color of final image
+DARK_COLOR = [25, 26, 36] # (rgb) dark color of final image
+
 ########################           FUNCTIONS           #########################
 def make_kernel(radius: int, sigma: float):
     ''' 
@@ -213,7 +228,6 @@ def make_image(in_img: np.array):
     return out_img
 
 ######################           OPENING IMAGE           #######################
-IMAGE_ADDRESS = r'example.jpg'
 img = np.array(Image.open(IMAGE_ADDRESS))
 if img.shape[2] == 4:
     img = np.delete(img, 3, 2)
@@ -225,8 +239,11 @@ bw_img = np.uint8(img.mean(axis=2))
 ######################           EDGE DETECTION           ######################
 print('# detecting edges...')
 # Gaussian blur
-print('*   gaussian blurring')
-gb_img = gaussian_blur(bw_img)
+if BLUR:
+    print('*   gaussian blurring')
+    gb_img = gaussian_blur(bw_img)
+else:
+    gb_img = bw_img
 # intensity gradient
 print('*   finding intensity gradient')
 sf_img, th_img = sobel_filter(gb_img)
@@ -235,26 +252,29 @@ print('*   magnitude thresholding')
 mt_img = magnitude_thresholding(sf_img, th_img)
 # double thresholding
 print('*   double thresholding')
-dt_img = double_threshold(mt_img, 0.1, 0.2)
+dt_img = double_threshold(mt_img, LOW_THRESH, HIGH_THRESH)
 # hysteresis
 print('*   hysteresis')
 hy_img = 255 - hysteresis(dt_img)
 # line thickening
-print('*   thickening lines')
-tl_img = line_thickener(hy_img, 1)
+if THICKEN_LINES:
+    print('*   thickening lines')
+    tl_img = line_thickener(hy_img, THICKEN_FACTOR)
+else:
+    tl_img = hy_img
 
 ########################           DITHERING           #########################
 print('# dithering')
 print('*   adjusting brightness...')
-gc_img = gamma_correct(bw_img, 1.0)
+gc_img = gamma_correct(bw_img, GAMMA_FACTOR)
 print('*   blue noise dithering...')
-di_img = dither(gc_img, coeff = 0.4)
+di_img = dither(gc_img, DITHER_COEFF)
 
 ########################           COMBINING           #########################
 combined_img = di_img - (255 - tl_img)
 combined_img[combined_img < 0] = 0
 
-colored = np.uint8(color_filter(combined_img, [245, 242, 225], [25, 26, 36]))
+colored = np.uint8(color_filter(combined_img, LIGHT_COLOR, DARK_COLOR))
 
 final = Image.fromarray(colored)
 final = final.save('final_img.png')
